@@ -1,0 +1,24 @@
+name: Unit Tests
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # checkout@v6.0.2
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # setup-go@v6.0.4  
+        with:
+          go-version-file: src/go.mod
+
+      - name: Run tests
+        run: go test -v -count=1 -race ./...

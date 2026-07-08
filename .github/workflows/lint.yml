@@ -1,0 +1,26 @@
+name: Lint
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  golangci-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # checkout@v6.0.2
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # setup-go@v6.0.4
+        with:
+          go-version-file: src/go.mod
+
+      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        with:
+          version: v2.11.4
+          working-directory: src

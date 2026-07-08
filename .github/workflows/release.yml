@@ -1,0 +1,112 @@
+name: Release
+env:
+  LC_ALL: "C.UTF-8"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Galaxy Proxy version.'
+        required: true
+        default: ''
+      confirm:
+        description: 'Are you sure? Set this to yes.'
+        required: true
+        default: 'no'
+
+jobs:
+  release-containers:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: write
+    steps:
+      - name: Verify inputs
+        run: |
+          set -e
+
+          if [[ "${{ github.event.inputs.confirm }}" != "yes" ]]; then
+            >&2 echo "Confirm must be 'yes'"
+            exit 1
+          fi
+
+          if [[ "${{ github.event.inputs.version }}" == "" ]]; then
+            >&2 echo "Set version to continue."
+            exit 1
+          fi
+
+          # Validate version format (semantic versioning)
+          if ! [[ "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.]+)?$ ]]; then
+            >&2 echo "Invalid version format. Must be semantic versioning (e.g., 1.2.3, 1.2.3-rc.1)"
+            exit 1
+          fi
+
+          exit 0
+
+      - name: Checkout Galaxy Proxy Repository
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # checkout@v6.0.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Environment
+        run: |
+          echo "IMAGE_VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          echo "DEBUG=false" > .env
+
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # login-action@v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # setup-buildx-action@v4.0.0
+
+      - name: Build Galaxy Proxy Images
+        run: |
+          docker compose build
+
+      - name: Create and Push Git Tag
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v${IMAGE_VERSION}" >/dev/null 2>&1; then
+            >&2 echo "Tag v${IMAGE_VERSION} already exists on remote"
+            exit 1
+          fi
+          git tag "v${IMAGE_VERSION}"
+          git push origin "v${IMAGE_VERSION}"
+
+      - name: Create Draft Release
+        run: |
+          if gh release view "v${IMAGE_VERSION}" >/dev/null 2>&1; then
+            >&2 echo "Release v${IMAGE_VERSION} already exists"
+            exit 1
+          fi
+          gh release create "v${IMAGE_VERSION}" \
+            --title "Ascender Galaxy Proxy v${IMAGE_VERSION}" \
+            --draft \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Depot
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # login-action@v4.1.0
+        with:
+          registry: depot.ciq.com
+          username: ${{ secrets.DEPOT_USER }}
+          password: ${{ secrets.PROD_DEPOT_PASSWORD }}
+
+      - name: Push Galaxy Proxy Images to ghcr
+        run: |
+          docker image tag ascender-galaxy-proxy:latest "ghcr.io/${{ github.repository }}:${IMAGE_VERSION}"
+          docker push "ghcr.io/${{ github.repository }}:${IMAGE_VERSION}"
+          docker image tag ascender-galaxy-proxy:latest "ghcr.io/${{ github.repository }}:latest"
+          docker push "ghcr.io/${{ github.repository }}:latest"
+
+      - name: Push Galaxy Proxy Images to Depot
+        run: |
+          docker image tag ascender-galaxy-proxy:latest "depot.ciq.com/ascender-ledger-pro/ascender-galaxy-proxy-images/ascender-galaxy-proxy:${IMAGE_VERSION}"
+          docker push "depot.ciq.com/ascender-ledger-pro/ascender-galaxy-proxy-images/ascender-galaxy-proxy:${IMAGE_VERSION}"
+          docker image tag ascender-galaxy-proxy:latest "depot.ciq.com/ascender-ledger-pro/ascender-galaxy-proxy-images/ascender-galaxy-proxy:latest"
+          docker push "depot.ciq.com/ascender-ledger-pro/ascender-galaxy-proxy-images/ascender-galaxy-proxy:latest"
