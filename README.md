@@ -21,6 +21,8 @@ Installation
 
 The Galaxy Proxy is currently set to be installed in Kubernetes via the [Ascender Installer](https://github.com/ctrliq/ascender-install).  You can deploy the container itself via the example manifest, but will need to ensure any additional Ingresses, Environmental Vars, etc... are updated.  If you want to deploy in docker, then the typical run commands should work, just ensure your .env file it properly set up.
 
+For anyone not wanting to run via a container, you can build the application and use a script that sets the ENV vars and just launch it.
+
 
 Run for Development
 -------------------
