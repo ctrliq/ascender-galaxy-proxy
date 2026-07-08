@@ -27,7 +27,9 @@ Run for Development
 
 1. docker compose build
 2. docker compose up
+
 or
+
 1. docker compose up --build -d
 
 The container will listen on port 80 for incoming requests and will either forward the request off to https://galaxy.ansible.com or return the previously cached response from disk.
