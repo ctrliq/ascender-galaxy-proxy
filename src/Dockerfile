@@ -9,7 +9,7 @@ RUN go mod download
 RUN go build -o ascender_galaxy_proxy ascender_galaxy_proxy.go
 
 ###############################################################################
-FROM alpine:3.23
+FROM alpine:3.24
 
 RUN mkdir -p /app/.cache
 COPY --from=builder /app/ascender_galaxy_proxy /app/ascender_galaxy_proxy
