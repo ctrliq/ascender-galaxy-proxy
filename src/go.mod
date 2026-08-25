@@ -1,6 +1,6 @@
 module github.com/ctrliq/ascender-galaxy-proxy
 
-go 1.25.0
+go 1.25.13
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
