@@ -1,0 +1,42 @@
+---
+# Security updates arrive without this file; what it adds is version updates.
+#
+# No groups: key on purpose, so every dependency comes as its own pull request.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    # every uses: is pinned to a SHA, and Dependabot keeps the version comment
+    # next to it in step
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "ci"
+    labels:
+      - dependencies
+      - ci
+
+  - package-ecosystem: gomod
+    directory: /src
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "build"
+    labels:
+      - dependencies
+      - build
+
+  - package-ecosystem: docker
+    # the build stage tracks golang:1.25 and the runtime alpine:3.23, both minor
+    # pins, so what Dependabot offers here is a real bump rather than a no-op
+    directory: /src
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "build"
+    labels:
+      - dependencies
+      - build
