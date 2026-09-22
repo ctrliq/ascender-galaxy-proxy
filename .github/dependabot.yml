@@ -29,7 +29,7 @@ updates:
       - build
 
   - package-ecosystem: docker
-    # the build stage tracks golang:1.25 and the runtime alpine:3.23, both minor
+    # the build stage tracks golang:1.26 and the runtime alpine:3.24, both minor
     # pins, so what Dependabot offers here is a real bump rather than a no-op
     directory: /src
     schedule:

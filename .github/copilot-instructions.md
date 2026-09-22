@@ -17,7 +17,7 @@ Ascender Galaxy Proxy is a Go reverse-proxy/cache for Ansible Galaxy (`galaxy.an
 ├── .env.example               # template for .env (which is gitignored)
 ├── .env                       # gitignored — local env config
 ├── src/                       # ← Go module root (go.mod lives here)
-│   ├── go.mod                 # module github.com/ctrliq/ascender-galaxy-proxy  (Go 1.25)
+│   ├── go.mod                 # module github.com/ctrliq/ascender-galaxy-proxy
 │   ├── go.sum
 │   ├── ascender_galaxy_proxy.go   # ALL production code (~1400 lines, single file)
 │   ├── helpers_test.go        # newTestProxy() helper, roundTripFunc, setUpstream()
@@ -27,7 +27,7 @@ Ascender Galaxy Proxy is a Go reverse-proxy/cache for Ansible Galaxy (`galaxy.an
 │   ├── lru_test.go            # LRU cache unit tests
 │   ├── metrics_test.go        # metrics increment, flush, snapshot, Prometheus output tests
 │   ├── util_test.go           # RawBytes, formatHashKey, rewriteBodyURLs, HTTP client tests
-│   ├── Dockerfile             # multi-stage: golang:1.25 builder → alpine:3.23 runtime
+│   ├── Dockerfile             # multi-stage: golang:1.26 builder → alpine:3.24 runtime
 │   └── .dockerignore
 ```
 
@@ -70,7 +70,7 @@ All three commands pass cleanly on the current codebase.
 1. **Lint** (`.github/workflows/lint.yml`): `golangci-lint` v2.11.4 with default config, working directory `src/`.
 2. **Unit Tests** (`.github/workflows/test.yml`): `go test -v -count=1 -race ./...`, working directory `src/`, Go version from `src/go.mod`.
 
-Both have a 10-minute timeout. Go version is read from `src/go.mod` (currently Go 1.25).
+Both have a 10-minute timeout. Go version is read from `src/go.mod`.
 
 ## Writing Tests
 
