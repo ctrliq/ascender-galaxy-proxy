@@ -2,13 +2,13 @@
 
 [![CI](https://github.com/ctrliq/ascender-galaxy-proxy/actions/workflows/test.yml/badge.svg)](https://github.com/ctrliq/ascender-galaxy-proxy/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-[![Go](https://img.shields.io/badge/go-%3E%3D1.25-blue.svg)](https://go.dev)
+[![Go](https://img.shields.io/badge/go-%3E%3D1.26-blue.svg)](https://go.dev)
 
 A caching proxy for Ansible Galaxy, written in Go. It sits between your automation and `galaxy.ansible.com`, serving collection metadata and artifacts from disk so that job runs stay fast, survive an upstream outage, and work inside networks with restricted internet access.
 
 ## Requirements
 
-- Go 1.25 or newer, to build from source
+- Go 1.26 or newer, to build from source
 - Docker with Compose, to run the container
 - A DNS name for the proxy, since clients are handed URLs that point back to it
 
