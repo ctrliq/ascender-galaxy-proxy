@@ -7,6 +7,7 @@ metadata:
 data:
   # Enable debug logging.
   DEBUG: "false"
+  LOG_FORMAT: "text"
   # Cache API responses for this many days.
   QUERY_CACHE_EXPIRE: "1"
   # Cache artifact downloads for this many days.

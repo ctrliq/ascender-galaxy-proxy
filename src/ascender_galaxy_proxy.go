@@ -37,6 +37,7 @@ Environment variables:
 - GALAXY_API_TOKEN: API token for authentication (if set, all requests must include Authorization header)
 - TRUSTED_PROXIES: Comma-separated list of trusted proxy IPs
 - DEBUG: Enable debug mode ("true" or "1" for debug, default: "false" for release)
+- LOG_FORMAT: Log output format, "text" (default) or "json"
 - CLEAR_CACHE_ON_START: If set to "1" or "True", clears cache directory on startup
 - MEM_CACHE_SIZE: Maximum items in the in-memory LRU cache (default: 2000)
 - HTTP_PROXY: HTTP proxy URL for upstream requests (e.g. http://proxy.example.com:8080)
@@ -61,6 +62,7 @@ import (
     "os"
     "os/signal"
     "path/filepath"
+    "runtime/debug"
     "strconv"
     "strings"
     "sync"
@@ -402,6 +404,79 @@ func getBaseURL() (string, error) {
         return "", fmt.Errorf("URL must include a host")
     }
     return strings.TrimRight(value, "/"), nil
+}
+
+func isDebugMode() bool {
+    value := os.Getenv("DEBUG")
+    return value == "1" || strings.EqualFold(value, "true")
+}
+
+// useJSONLogs reports whether LOG_FORMAT selects JSON output. Any other value means text.
+func useJSONLogs() bool {
+    return strings.EqualFold(strings.TrimSpace(os.Getenv("LOG_FORMAT")), "json")
+}
+
+// setupJSONLogging routes all log output (application, Gin, and net/http) through
+// a JSON slog handler, one object per line on stderr.
+func setupJSONLogging(debug bool) {
+    level := slog.LevelInfo
+    if debug {
+        level = slog.LevelDebug
+    }
+    slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+
+    // Gin's debug output (startup warnings, route table) only prints in debug mode
+    gin.DebugPrintFunc = func(format string, values ...any) {
+        msg := strings.TrimSpace(fmt.Sprintf(format, values...))
+        msg = strings.TrimSpace(strings.TrimPrefix(msg, "[WARNING]"))
+        slog.Debug(msg, "source", "gin")
+    }
+    gin.DebugPrintRouteFunc = func(httpMethod, absolutePath, handlerName string, nuHandlers int) {
+        slog.Debug("Route registered", "source", "gin",
+            "method", httpMethod, "path", absolutePath, "handler", handlerName, "handlers", nuHandlers)
+    }
+}
+
+// slogRequestLogger replaces gin.Logger() when JSON logging is enabled.
+func slogRequestLogger() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        start := time.Now()
+        path := c.Request.URL.Path
+        query := c.Request.URL.RawQuery
+
+        c.Next()
+
+        status := c.Writer.Status()
+        level := slog.LevelInfo
+        switch {
+        case status >= 500:
+            level = slog.LevelError
+        case status >= 400:
+            level = slog.LevelWarn
+        }
+        attrs := []slog.Attr{
+            slog.Int("status", status),
+            slog.String("method", c.Request.Method),
+            slog.String("path", path),
+            slog.String("query", query),
+            slog.String("clientIP", c.ClientIP()),
+            slog.Float64("latencyMs", float64(time.Since(start).Microseconds())/1000),
+            slog.Int("bytes", c.Writer.Size()),
+            slog.String("userAgent", c.Request.UserAgent()),
+        }
+        if errs := c.Errors.ByType(gin.ErrorTypePrivate).String(); errs != "" {
+            attrs = append(attrs, slog.String("errors", errs))
+        }
+        slog.LogAttrs(c.Request.Context(), level, "Request", attrs...)
+    }
+}
+
+// slogRecovery replaces gin.Recovery() when JSON logging is enabled.
+func slogRecovery() gin.HandlerFunc {
+    return gin.CustomRecoveryWithWriter(nil, func(c *gin.Context, err any) {
+        slog.Error("Panic recovered", "error", err, "path", c.Request.URL.Path, "stack", string(debug.Stack()))
+        c.AbortWithStatus(http.StatusInternalServerError)
+    })
 }
 
 func shouldClearCacheOnStart() bool {
@@ -1058,6 +1133,12 @@ func main() {
     flag.StringVar(&port, "port", "80", "Port")
     flag.Parse()
 
+    debugMode := isDebugMode()
+    jsonLogs := useJSONLogs()
+    if jsonLogs {
+        setupJSONLogging(debugMode)
+    }
+
     // Validate URL
     baseURL, err := getBaseURL()
     if err != nil {
@@ -1067,8 +1148,7 @@ func main() {
     slog.Info("Base URL configured", "baseURL", baseURL)
 
     // Set Gin mode based on DEBUG env var
-    debugMode := os.Getenv("DEBUG")
-    if debugMode == "1" || strings.EqualFold(debugMode, "true") {
+    if debugMode {
         gin.SetMode(gin.DebugMode)
         slog.Info("Running in debug mode")
     } else {
@@ -1094,7 +1174,12 @@ func main() {
         done:                 make(chan struct{}),
     }
 
-    r := gin.Default()
+    r := gin.New()
+    if jsonLogs {
+        r.Use(slogRequestLogger(), slogRecovery())
+    } else {
+        r.Use(gin.Logger(), gin.Recovery())
+    }
 
     // load metrics from file
     galaxyProxy.loadMetrics()
@@ -1221,6 +1306,9 @@ func main() {
         Handler:           r,
         ReadHeaderTimeout: 10 * time.Second,
         IdleTimeout:       120 * time.Second,
+    }
+    if jsonLogs {
+        srv.ErrorLog = slog.NewLogLogger(slog.Default().Handler(), slog.LevelError)
     }
 
     // Start server in a goroutine; send errors via channel instead of os.Exit
