@@ -180,3 +180,29 @@ func TestShouldClearCacheOnStart(t *testing.T) {
 		})
 	}
 }
+
+// ── useJSONLogs ─────────────────────────────────────────────────────
+
+func TestUseJSONLogs(t *testing.T) {
+	tests := []struct {
+		name     string
+		envValue string
+		expected bool
+	}{
+		{"unset", "", false},
+		{"text", "text", false},
+		{"json", "json", true},
+		{"JSON upper", "JSON", true},
+		{"padded", " json ", true},
+		{"other", "logfmt", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("LOG_FORMAT", tt.envValue)
+			result := useJSONLogs()
+			if result != tt.expected {
+				t.Errorf("useJSONLogs() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}

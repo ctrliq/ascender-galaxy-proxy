@@ -57,6 +57,7 @@ All configuration is by environment variable, read from `.env` in Compose deploy
 | `GALAXY_API_TOKEN` | empty | Token required from clients, when set |
 | `EXTERNAL_PORT` | `80` | Host port mapped to the container |
 | `DEBUG` | `false` | Verbose logging and debug mode |
+| `LOG_FORMAT` | `text` | Log output format: `text` or `json` (one JSON object per line, including request logs) |
 
 ## Included content
 
