@@ -5,7 +5,7 @@ go 1.26.7
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/gin-gonic/gin v1.12.0
-	golang.org/x/sync v0.23.0
+	golang.org/x/sync v0.24.0
 )
 
 require (
